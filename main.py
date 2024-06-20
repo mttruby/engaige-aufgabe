@@ -9,9 +9,12 @@ import yaml
 
 def files_to_docs(docs_dir: str, documents: List[Dict], chunk_size: int):
 
+    # Überspringen, was kein PDF ist
     for file in os.listdir(docs_dir):
         if not file.endswith('.pdf'): continue
     
+    # Alles zusammenfassen, um dann in chunks von bestimtmen Wort-Anzahlen aufzuteilen
+    # Schien mir sinnvoller, als ein chunk pro PDF-Seite
     doc = pymupdf.open(os.path.join(docs_dir, file))
     full_text = ""
     for page_num in range(doc.page_count):
@@ -20,7 +23,7 @@ def files_to_docs(docs_dir: str, documents: List[Dict], chunk_size: int):
 
     words = full_text.split()
     
-    # Teile in Abschnitte von chunk_size worten auf
+    # Teile in Abschnitte von chunk_size Worten auf
     chunks = [' '.join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size)]
 
     for chunk in chunks:
@@ -29,25 +32,35 @@ def files_to_docs(docs_dir: str, documents: List[Dict], chunk_size: int):
 
 def index_documents(doc_store: ESDocStore, docs_dir: str):
     
+    # Text aus PDF-Dateien  extrahieren
     docs = []
     files_to_docs(docs_dir=docs_dir, documents=docs, chunk_size=100)
     
+    # Embeddings generieren
     embedder.embed_docs(documents=docs)
     
+    # DocumentStore löschen und neu beschreiben
     doc_store.clear()
     doc_store.write_documents(documents=docs)
 
 
 def query(question: str, doc_store: ESDocStore, embedder: Embedder, generator: AnswerGenerator):
     
+
+    # Retrieval
     embedding = embedder.get_embedding(question)
     search_result = doc_store.search(embedding)
     
+    
+    # Die relevanten Textpassagen zu einer kombinieren, um sie dem LLM
+    # als Kontext zu geben.
     context = ""
 
     for hit in search_result['hits']['hits']:
        context += f"Kontext: {(hit['_source']['text'])} "
-       
+
+
+    # Antwort generieren   
     answer = generator.generate_answer(question, context)
     return answer        
     
