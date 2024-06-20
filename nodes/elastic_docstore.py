@@ -32,6 +32,8 @@ class ESDocStore:
 
 
     def search(self, query_embedding):
+
+        # k-Nächste Nachbarn zur Suche ähnlicher Embeddings
         response = self.client.search(
         index=self.index,
         body={
