@@ -3,7 +3,7 @@
 
 1. Elasticsearch pullen und im Docker-Container starten
 ```
-Elasticsearchdocker run --name elastic-rag-01 -d -e "discovery.type=single-node" -p 9200:9200 docker.elastic.co/elasticsearch/elasticsearch:8.14.1
+docker run --name elastic-rag-01 -d -e "discovery.type=single-node" -p 9200:9200 docker.elastic.co/elasticsearch/elasticsearch:8.14.1
 ```
 
 2. Das Passwort des Elasticsearch-Nutzers neu setzen
