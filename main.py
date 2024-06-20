@@ -1,9 +1,10 @@
 from typing import List, Dict
-from elastic_docstore import ESDocStore
-from embedder import Embedder
-from generator import AnswerGenerator
+from nodes.elastic_docstore import ESDocStore
+from nodes.embedder import Embedder
+from nodes.generator import AnswerGenerator
 import pymupdf
 import os
+import yaml
 
 
 def files_to_docs(docs_dir: str, documents: List[Dict], chunk_size: int):
@@ -31,10 +32,10 @@ def index_documents(doc_store: ESDocStore, docs_dir: str):
     docs = []
     files_to_docs(docs_dir=docs_dir, documents=docs, chunk_size=100)
     
-    embedder.embed_docs(documents=docs[:5])
+    embedder.embed_docs(documents=docs)
     
     doc_store.clear()
-    doc_store.write_documents(documents=docs[:5])
+    doc_store.write_documents(documents=docs)
 
 
 def query(question: str, doc_store: ESDocStore, embedder: Embedder, generator: AnswerGenerator):
@@ -46,19 +47,23 @@ def query(question: str, doc_store: ESDocStore, embedder: Embedder, generator: A
 
     for hit in search_result['hits']['hits']:
        context += f"Kontext: {(hit['_source']['text'])} "
-
+       
     answer = generator.generate_answer(question, context)
-    return answer   
-        
+    return answer        
     
 
 if __name__ == '__main__':
 
+    with open('credentials.yaml', 'r') as file:
+        creds = yaml.safe_load(file)
+
+    doc_store = ESDocStore(host='localhost', port=9200, index="entwicklertask",
+                           username=creds['user'], password=creds['password'])
+
     embedder = Embedder("dbmdz/bert-base-german-cased")
-    doc_store = ESDocStore(host='localhost', port=9200, index="entwicklertask")
     generator = AnswerGenerator("DiscoResearch/Llama3-DiscoLeo-Instruct-8B-v0.1")
 
-    # index_documents(doc_store=doc_store, docs_dir="data")
+    index_documents(doc_store=doc_store, docs_dir="data")
 
     try:
        
@@ -67,7 +72,7 @@ if __name__ == '__main__':
             question = input("Stelle Deine Frage: ")
             answer = query(question, doc_store=doc_store, embedder=embedder, generator=generator)
     
-            print(f"\nAntwort: {answer}\n\n")
+            print(f"\n\nAntwort: {answer}\n\n")
     
     except KeyboardInterrupt:
         print('Stopped.')
